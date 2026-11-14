@@ -18,12 +18,13 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
     ) {
 
         guard let windowScene = (scene as? UIWindowScene) else { return }
-        let mainViewController = ViewController()
+        let api = ApiManager()
+        let mainViewController = ListViewController(api: api)
         let navigationController = UINavigationController(rootViewController: mainViewController)
         
         let window = UIWindow(windowScene: windowScene)
         window.rootViewController = navigationController
-        window.tintColor = .systemRed
+        window.tintColor = .customRed
         self.window = window
         window.makeKeyAndVisible()
     }
