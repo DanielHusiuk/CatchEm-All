@@ -8,10 +8,7 @@
 import UIKit
 
 protocol DataLoaderProtocol {
-    func loadImage(
-        from urlString: String,
-        completion: @escaping (UIImage?) -> Void
-    ) -> URLSessionDataTask?
+    func loadImage(from urlString: String) async -> UIImage?
 }
 
 final class DataLoader: DataLoaderProtocol {
@@ -19,48 +16,35 @@ final class DataLoader: DataLoaderProtocol {
     private let cache = NSCache<NSString, UIImage>()
     private init() {}
     
-    @discardableResult
-    func loadImage(
-        from urlString: String,
-        completion: @escaping (UIImage?) -> Void
-    ) -> URLSessionDataTask? {
+    func loadImage(from urlString: String) async -> UIImage? {
+        guard !Task.isCancelled else { return nil }
         
-        if let cachedData = cache.object(forKey: urlString as NSString) {
-            DispatchQueue.main.async {
-                completion(cachedData)
-            }
-            return nil
+        let key = urlString as NSString
+        if let cachedData = cache.object(forKey: key) {
+            return cachedData
         }
-        
         guard let url = URL(string: urlString) else {
-            DispatchQueue.main.async {
-                completion(nil)
-            }
             return nil
         }
         
-        let task = URLSession.shared.dataTask(with: url) { [weak self] data, response, error in
-            guard (error as? URLError)?.code != .cancelled else { return }
+        do {
+            let (data, response) = try await URLSession.shared.data(from: url)
             
-            guard
-                let http = response as? HTTPURLResponse,
-                200...299 ~= http.statusCode,
-                let data = data,
-                let image = UIImage(data: data)
-                    else {
-                DispatchQueue.main.async {
-                    completion(nil)
-                }
-                return
+            guard !Task.isCancelled,
+                  let http = response as? HTTPURLResponse,
+                  (200...299).contains(http.statusCode),
+                  let image = UIImage(data: data) else {
+                return nil
             }
             
             let preparedImage = image.preparingForDisplay() ?? image
-            self?.cache.setObject(preparedImage, forKey: urlString as NSString)
-            DispatchQueue.main.async {
-                completion(preparedImage)
-            }
+            guard !Task.isCancelled else { return nil }
+            
+            cache.setObject(preparedImage, forKey: key)
+            return preparedImage
+        } catch {
+            return nil
         }
-        task.resume()
-        return task
     }
+    
 }

@@ -27,6 +27,7 @@ final class DetailViewController: UIViewController {
     private let viewModel: DetailViewModel
     private let disposeBag = DisposeBag()
     private var loadedDetail: PokemonDetail?
+    private var imageTask: Task<Void, Never>?
     
     private let mainStackView = UIStackView()
     private let imageView = UIImageView()
@@ -56,6 +57,10 @@ final class DetailViewController: UIViewController {
         fatalError("init(coder:) has not been implemented")
     }
     
+    deinit {
+        imageTask?.cancel()
+    }
+    
     override func viewDidLoad() {
         super.viewDidLoad()
         setupView()
@@ -69,20 +74,26 @@ final class DetailViewController: UIViewController {
         setupLayout()
         
         viewModel.state
-            .drive(with: self, onNext: { owner, state in
-                owner.renderView(state)
+            .asDriver()
+            .drive(onNext: { [weak self] state in
+                guard let self else { return }
+                renderView(state)
             })
             .disposed(by: disposeBag)
         
         segmentedControl.rx.selectedSegmentIndex.changed
-            .subscribe(with: self, onNext: { owner, _ in
-                owner.renderSelectedSection()
+            .asDriver()
+            .drive(onNext: { [weak self] _ in
+                guard let self else { return }
+                renderSelectedSection()
             })
             .disposed(by: disposeBag)
         
         retryButton.rx.tap
-            .subscribe(with: self, onNext: { owner, _ in
-                owner.viewModel.load()
+            .asDriver()
+            .drive(onNext: { [weak self] _ in
+                guard let self else { return }
+                viewModel.load()
             })
             .disposed(by: disposeBag)
         
@@ -160,7 +171,6 @@ Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deseru
         
         tableView.rowHeight = 54
         tableView.estimatedRowHeight = 0
-        
         tableView.register(UITableViewCell.self, forCellReuseIdentifier: cellIdentifier)
         
         tableRows.bind(
@@ -184,6 +194,8 @@ Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deseru
     // MARK: - Actions
     
     private func renderView(_ state: DetailViewModel.State) {
+        imageTask?.cancel()
+        imageTask = nil
         loadingIndicator.stopAnimating()
         retryButton.isHidden = true
         
@@ -199,12 +211,14 @@ Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deseru
             renderSelectedSection()
             imageView.image = UIImage(systemName: "photo")
             
-            DataLoader.shared.loadImage(from: detail.imageUrl ?? item.imageUrl) { [weak self] image in
-                if let image {
-                    self?.imageView.image = image
-                }
+            let imageUrl = detail.imageUrl ?? item.imageUrl
+            imageTask = Task { [weak self] in
+                let image = await DataLoader.shared.loadImage(from: imageUrl)
+                guard !Task.isCancelled, let image else { return }
+                self?.imageView.image = image
             }
         }
+        
     }
     
     private func renderSelectedSection() {

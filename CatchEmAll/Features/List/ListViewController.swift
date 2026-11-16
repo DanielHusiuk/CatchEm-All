@@ -31,20 +31,17 @@ class ListViewController: UIViewController {
     private let stackView = UIStackView()
     private let retryButton = UIButton(type: .system)
     private let disposeBag = DisposeBag()
-    
-    private let api: ApiManager
     private let viewModel: ListViewModel
     
-    init(api: ApiManager) {
-        self.api = api
-        self.viewModel = ListViewModel(api: api)
+    init(viewModel: ListViewModel) {
+        self.viewModel = viewModel
         super.init(nibName: nil, bundle: nil)
     }
     
     required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
     }
-
+    
     override func viewDidLoad() {
         super.viewDidLoad()
         setupBackgroundImageContainer()
@@ -117,45 +114,52 @@ class ListViewController: UIViewController {
             .disposed(by: disposeBag)
         
         collectionView.rx.itemSelected
-            .subscribe(with: self, onNext: { owner, indexPath in
-                owner.collectionView.deselectItem(at: indexPath, animated: true)
+            .asDriver()
+            .drive(onNext: { [weak self] indexPath in
+                guard let self else { return }
+                collectionView.deselectItem(at: indexPath, animated: true)
                 
-                guard let navigation = owner.navigationController,
-                      navigation.topViewController === owner,
-                      let item: CellModel = try? owner.collectionView.rx.model(at: indexPath)
-                else { return }
+                guard let navigation = navigationController,
+                      navigation.topViewController === self,
+                      let item: CellModel = try? collectionView.rx.model(at: indexPath)
+                        else { return }
                 
-                let viewModel = DetailViewModel(id: item.id, api: owner.api)
-                let detail = DetailViewController(item: item, viewModel: viewModel)
-                navigation.pushViewController(detail, animated: true)
+                let detailViewModel = viewModel.makeDetailViewModel(id: item.id)
+                let detailController = DetailViewController(item: item, viewModel: detailViewModel)
+                navigation.pushViewController(detailController, animated: true)
             })
             .disposed(by: disposeBag)
         
         collectionView.rx.willDisplayCell
-            .subscribe(with: self, onNext: { owner, event in
-                let count = owner.collectionView.numberOfItems(inSection: event.at.section)
-                if event.at.item >= count - 4, owner.retryButton.isHidden {
-                    owner.viewModel.loadNextPage()
+            .asDriver()
+            .drive(onNext: { [weak self] event in
+                guard let self else { return }
+                let count = collectionView.numberOfItems(inSection: event.at.section)
+                if event.at.item >= count - 4, retryButton.isHidden {
+                    viewModel.loadNextPage()
                 }
             })
             .disposed(by: disposeBag)
         
         viewModel.status
-            .drive(with: self, onNext: { owner, status in
+            .drive(onNext: { [weak self] status in
+                guard let self else { return }
                 if status == .loading {
-                    owner.loadingIndicator.startAnimating()
+                    loadingIndicator.startAnimating()
                 } else {
-                    owner.loadingIndicator.stopAnimating()
+                    loadingIndicator.stopAnimating()
                 }
-                owner.retryButton.isHidden = status != .failed
+                retryButton.isHidden = status != .failed
             })
             .disposed(by: disposeBag)
         
         retryButton.rx.tap
-            .subscribe(with: self, onNext: { owner, _ in
-                owner.viewModel.loadNextPage()
+            .asDriver()
+            .drive(onNext: { [weak self] _ in
+                guard let self else { return }
+                viewModel.loadNextPage()
             })
             .disposed(by: disposeBag)
     }
-
+    
 }

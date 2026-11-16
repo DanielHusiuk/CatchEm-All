@@ -16,13 +16,13 @@ final class DetailViewModel {
     }
     
     private let id: Int
-    private let api: ApiManager
+    private let api: ApiManagerProtocol
     private let stateRelay = BehaviorRelay<State>(value: .loading)
     private var isLoading = false
     
     var state: Driver<State> { stateRelay.asDriver() }
     
-    init(id: Int, api: ApiManager) {
+    init(id: Int, api: ApiManagerProtocol) {
         self.id = id
         self.api = api
     }

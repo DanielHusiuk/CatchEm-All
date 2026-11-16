@@ -16,8 +16,7 @@ final class CollectionViewCell: UICollectionViewCell {
     private let titleStackView = UIStackView()
     private let mainStackView = UIStackView()
     
-    private var imageRequestID: UUID?
-    private var imageTask: URLSessionDataTask?
+    private var imageTask: Task<Void, Never>?
     static let reuseIdentifier = "ListCell"
     
     override init(frame: CGRect) {
@@ -40,11 +39,14 @@ final class CollectionViewCell: UICollectionViewCell {
         setupMainStackView()
     }
     
+    deinit {
+        imageTask?.cancel()
+    }
+    
     override func prepareForReuse() {
         super.prepareForReuse()
         imageTask?.cancel()
         imageTask = nil
-        imageRequestID = nil
         
         imageView.image = nil
         titleLabel.text = nil
@@ -57,11 +59,10 @@ final class CollectionViewCell: UICollectionViewCell {
         subtitleLabel.text = model.subtitle
         imageView.image = UIImage(systemName: "photo")
         
-        let requestID = UUID()
-        imageRequestID = requestID
-        imageTask = loader.loadImage(from: model.imageUrl) { [weak self] image in
-            guard let self, self.imageRequestID == requestID, let image else { return }
-            self.imageView.image = image
+        imageTask = Task { [weak self] in
+            let image = await loader.loadImage(from: model.imageUrl)
+            guard !Task.isCancelled, let image else { return }
+            self?.imageView.image = image
         }
     }
     
