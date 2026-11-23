@@ -46,6 +46,7 @@ class ListViewController: UIViewController {
         super.viewDidLoad()
         setupBackgroundImageContainer()
         setupView()
+        setupAccessibilityID()
     }
     
     // MARK: - Setup
@@ -99,6 +100,13 @@ class ListViewController: UIViewController {
         
         bind()
         viewModel.loadNextPage()
+    }
+    
+    private func setupAccessibilityID() {
+        backgroundImageContainer.accessibilityIdentifier = "backgroundImage"
+        collectionView.accessibilityIdentifier = "collectionView"
+        loadingIndicator.accessibilityIdentifier = "loadingIndicator"
+        retryButton.accessibilityIdentifier = "retryButton"
     }
     
     // MARK: - Actions

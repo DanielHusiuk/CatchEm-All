@@ -27,7 +27,6 @@ final class DetailViewController: UIViewController {
     private let viewModel: DetailViewModel
     private let disposeBag = DisposeBag()
     private var loadedDetail: PokemonDetail?
-    private var imageTask: Task<Void, Never>?
     
     private let mainStackView = UIStackView()
     private let imageView = UIImageView()
@@ -57,13 +56,10 @@ final class DetailViewController: UIViewController {
         fatalError("init(coder:) has not been implemented")
     }
     
-    deinit {
-        imageTask?.cancel()
-    }
-    
     override func viewDidLoad() {
         super.viewDidLoad()
         setupView()
+        setupAccessibilityID()
     }
     
     // MARK: - Setup
@@ -81,6 +77,13 @@ final class DetailViewController: UIViewController {
             })
             .disposed(by: disposeBag)
         
+        viewModel.image
+            .asDriver()
+            .drive(onNext: { [weak self] image in
+                self?.imageView.image = image ?? UIImage(systemName: "photo")
+            })
+            .disposed(by: disposeBag)
+        
         segmentedControl.rx.selectedSegmentIndex.changed
             .asDriver()
             .drive(onNext: { [weak self] _ in
@@ -93,11 +96,11 @@ final class DetailViewController: UIViewController {
             .asDriver()
             .drive(onNext: { [weak self] _ in
                 guard let self else { return }
-                viewModel.load()
+                viewModel.loadDetail()
             })
             .disposed(by: disposeBag)
         
-        viewModel.load()
+        viewModel.loadDetail()
     }
     
     private func setupLayout() {
@@ -187,15 +190,23 @@ Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deseru
                 cell.backgroundConfiguration = .clear()
                 cell.backgroundColor = .clear
                 cell.contentView.backgroundColor = .clear
+                cell.accessibilityIdentifier = "detailCell"
             }
             .disposed(by: disposeBag)
+    }
+    
+    private func setupAccessibilityID() {
+        imageView.accessibilityIdentifier = "imageView"
+        segmentedControl.accessibilityIdentifier = "segmentedControl"
+        tableView.accessibilityIdentifier = "tableView"
+        infoLabel.accessibilityIdentifier = "infoLabel"
+        loadingIndicator.accessibilityIdentifier = "loadingIndicator"
+        retryButton.accessibilityIdentifier = "retryButton"
     }
     
     // MARK: - Actions
     
     private func renderView(_ state: DetailViewModel.State) {
-        imageTask?.cancel()
-        imageTask = nil
         loadingIndicator.stopAnimating()
         retryButton.isHidden = true
         
@@ -209,14 +220,6 @@ Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deseru
         case .loaded(let detail):
             loadedDetail = detail
             renderSelectedSection()
-            imageView.image = UIImage(systemName: "photo")
-            
-            let imageUrl = detail.imageUrl ?? item.imageUrl
-            imageTask = Task { [weak self] in
-                let image = await DataLoader.shared.loadImage(from: imageUrl)
-                guard !Task.isCancelled, let image else { return }
-                self?.imageView.image = image
-            }
         }
         
     }
