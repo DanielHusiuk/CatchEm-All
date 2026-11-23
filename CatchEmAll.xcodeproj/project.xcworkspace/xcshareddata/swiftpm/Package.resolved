@@ -1,0 +1,24 @@
+{
+  "originHash" : "5c73e82a1fd569697a58e8f7131054c06e7481fded9d6bf34dd7c6755a904ac4",
+  "pins" : [
+    {
+      "identity" : "pokemonapi",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/kinkofer/PokemonAPI",
+      "state" : {
+        "revision" : "d9fa1d298e986105d9f0195095fdeadbbb5bc361",
+        "version" : "7.0.3"
+      }
+    },
+    {
+      "identity" : "rxswift",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/ReactiveX/RxSwift.git",
+      "state" : {
+        "revision" : "132aea4f236ccadc51590b38af0357a331d51fa2",
+        "version" : "6.10.2"
+      }
+    }
+  ],
+  "version" : 3
+}

@@ -8,24 +8,26 @@
 import UIKit
 
 class SceneDelegate: UIResponder, UIWindowSceneDelegate {
-
+    
     var window: UIWindow?
-
+    
     func scene(
         _ scene: UIScene,
         willConnectTo session: UISceneSession,
         options connectionOptions: UIScene.ConnectionOptions
     ) {
-
+        
         guard let windowScene = (scene as? UIWindowScene) else { return }
-        let mainViewController = ViewController()
+        let api = ApiManager()
+        let viewModel = ListViewModel(api: api)
+        let mainViewController = ListViewController(viewModel: viewModel)
         let navigationController = UINavigationController(rootViewController: mainViewController)
         
         let window = UIWindow(windowScene: windowScene)
         window.rootViewController = navigationController
-        window.tintColor = .systemRed
+        window.tintColor = .customRed
         self.window = window
         window.makeKeyAndVisible()
     }
-
+    
 }
