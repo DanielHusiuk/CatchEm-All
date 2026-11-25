@@ -58,6 +58,7 @@ final class CollectionViewCell: UICollectionViewCell {
         titleLabel.text = model.title
         subtitleLabel.text = model.subtitle
         imageView.image = UIImage(systemName: "photo")
+        accessibilityIdentifier = "listCell"
         
         imageTask = Task { [weak self] in
             let image = await loader.loadImage(from: model.imageUrl)

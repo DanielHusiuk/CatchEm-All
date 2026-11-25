@@ -18,7 +18,23 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
     ) {
         
         guard let windowScene = (scene as? UIWindowScene) else { return }
-        let api = ApiManager()
+        let api: ApiManagerProtocol
+        
+#if DEBUG
+        if ProcessInfo.processInfo.arguments.contains("-uiTesting") {
+            let mock = MockApiManager()
+            
+            if ProcessInfo.processInfo.arguments.contains("-failFirstPage") {
+                mock.pageFailures = 1
+            }
+            api = mock
+        } else {
+            api = ApiManager()
+        }
+#else
+        api = ApiManager()
+#endif
+        
         let viewModel = ListViewModel(api: api)
         let mainViewController = ListViewController(viewModel: viewModel)
         let navigationController = UINavigationController(rootViewController: mainViewController)
